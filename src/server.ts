@@ -1,10 +1,23 @@
 import express from 'express';
 
+interface RequestParameters {
+    factorial: number;
+}
+
+function calcFactorial(n?: number): number {
+    if (n == null) return 0;
+
+    let result = 1;
+
+    for (let i = 2; i <= n; i++) result *= i;
+
+    return result;
+}
+
 const server = express();
 
-server.get('/', (req, res) => {
-    console.log(req.query)
-    res.sendStatus(200);
+server.get('/:factorial', (req:express.Request<RequestParameters>, res) => {
+    res.send({ result: calcFactorial(req.params.factorial) });
 })
 
 server.listen(8080, () => {
