@@ -1,4 +1,4 @@
-import opentelemetry, { Tracer } from "@opentelemetry/api";
+import opentelemetry, { Span, Tracer } from "@opentelemetry/api";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { Resource } from "@opentelemetry/resources";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
@@ -49,6 +49,44 @@ export class TelemetryProvider {
     return opentelemetry.trace.getTracer(this.serviceName);
   }
 
+  public currentSpan(): Span | undefined {
+    return opentelemetry.trace.getSpan(opentelemetry.context.active());
+  }
+
   private readonly exporterHost: string;
   private readonly serviceName: string;
+}
+
+export function TraceFunction(provider: TelemetryProvider) {
+  return function (
+    this: any,
+    target: unknown,
+    key: string,
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor {
+    const original: any = descriptor.value;
+
+    descriptor.value = (...args: any[]) => {
+      let parentSpan = provider.currentSpan();
+
+      if (parentSpan == undefined)
+        parentSpan = provider.tracer().startSpan(String(key));
+
+      const ctx = opentelemetry.trace.setSpan(
+        opentelemetry.context.active(),
+        parentSpan
+      );
+      const childSpan = provider
+        .tracer()
+        .startSpan(String(key), undefined, ctx);
+
+      const result = original.apply(this, args);
+
+      childSpan.end();
+
+      return result;
+    };
+
+    return descriptor;
+  };
 }

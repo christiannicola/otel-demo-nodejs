@@ -1,4 +1,4 @@
-import { TelemetryProvider } from "./otel";
+import { TelemetryProvider, TraceFunction } from "./otel";
 
 // NOTE (c.nicola): Because the of the implementation of the automatic instrumentation
 //                  for express webservers we need to import and construct our telemetry
@@ -24,25 +24,25 @@ interface RequestParameters {
   factorial: number;
 }
 
-function calcFactorial(n?: number): bigint {
-  if (n == null) return 0n;
+class FactorialCalculator {
+  @TraceFunction(telemetry)
+  static calcFactorial(n?: number): bigint {
+    if (n == null) return 0n;
 
-  let result = 1n;
+    let result = 1n;
 
-  for (let i = 2n; i <= n; i++) result *= i;
+    for (let i = 2n; i <= n; i++) result *= i;
 
-  return result;
+    return result;
+  }
 }
 
 const server = express();
 
 server.use(express.json());
-server.get("/:factorial", (req: express.Request<RequestParameters>, res) => {
-  const span = telemetry.tracer().startSpan("factorial-calculation");
-  console.log(req.headers);
-  const result = calcFactorial(req.params.factorial);
 
-  span.end();
+server.get("/:factorial", (req: express.Request<RequestParameters>, res) => {
+  const result = FactorialCalculator.calcFactorial(req.params.factorial);
 
   res.send({ result });
 });
