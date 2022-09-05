@@ -27,14 +27,22 @@ interface RequestParameters {
 class FactorialCalculator {
   @TraceFunction(telemetry)
   static calcFactorial(n?: number): bigint {
-    if (n == null) return 0n;
+    if (!n) return 0n;
+
+    if (FactorialCalculator.memo[n]) {
+      return FactorialCalculator.memo[n];
+    }
 
     let result = 1n;
 
     for (let i = 2n; i <= n; i++) result *= i;
 
+    FactorialCalculator.memo[n] = result;
+
     return result;
   }
+
+  private static memo: bigint[] = [];
 }
 
 const server = express();
